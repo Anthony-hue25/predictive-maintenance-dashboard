@@ -2,10 +2,31 @@ import streamlit as st
 import pandas as pd
 import pickle
 
+import pickle
+import os
+import streamlit as st
+
+# Function to safely load the model
+def load_model():
+    model_path = "trained_rf_model_compatible.pkl"
+    if os.path.exists(model_path):
+        try:
+            with open(model_path, "rb") as file:
+                return pickle.load(file)
+        except Exception as e:
+            st.error(f"🚨 Model loading error: {e}")
+            return None
+    else:
+        st.error("🚨 Model file not found! Upload `trained_rf_model_compatible.pkl` to the repository.")
+        return None
+
 # Load the trained model
-model_path = "trained_rf_model.pkl"
-with open(model_path, "rb") as file:
-    model_rf = pickle.load(file)
+model_rf = load_model()
+
+# Check if model loaded successfully
+if model_rf is None:
+    st.stop()
+
 
 # Streamlit App Title
 st.title("🔧 AI-Powered Predictive Maintenance Dashboard")
