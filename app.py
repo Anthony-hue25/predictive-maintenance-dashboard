@@ -13,7 +13,7 @@ import sklearn
 
 # Function to safely load the model
 def load_model():
-    model_path = "trained_rf_model_compatible.pkl"
+    model_path = "trained_rf_model.pkl"
     if os.path.exists(model_path):
         try:
             with open(model_path, "rb") as file:
