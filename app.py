@@ -1,26 +1,11 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import os
 import pickle
 
-# Function to load model safely
-def load_model():
-    model_path = "trained_rf_model.pkl"
-    if os.path.exists(model_path):
-        with open(model_path, "rb") as file:
-            return pickle.load(file)
-    else:
-        return None
-
 # Load the trained model
-model_rf = load_model()
-
-# Check if model loaded successfully
-if model_rf is None:
-    st.error("🚨 Model file `trained_rf_model.pkl` not found! Please upload it to the repository and redeploy.")
-    st.stop()
-
+model_path = "trained_rf_model.pkl"
+with open(model_path, "rb") as file:
+    model_rf = pickle.load(file)
 
 # Streamlit App Title
 st.title("🔧 AI-Powered Predictive Maintenance Dashboard")
@@ -68,3 +53,4 @@ if st.button("🔍 Predict Machine Failure"):
     # Show failure probability gauge
     st.subheader("📊 Failure Probability")
     st.progress(failure_prob / 100)
+
