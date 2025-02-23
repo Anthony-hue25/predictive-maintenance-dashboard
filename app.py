@@ -35,7 +35,7 @@ st.markdown("Monitor machine health & predict failures in real-time!")
 st.sidebar.header("📊 Input Sensor Data")
 
 def user_input_features():
-    # Machine Type as a categorical variable (Convert to One-Hot Encoding)
+    # Machine Type as a categorical variable (No One-Hot Encoding)
     machine_type = st.sidebar.selectbox("Machine Type", ["L", "M", "H"])
 
     air_temp = st.sidebar.slider("Air Temperature (K)", 295.0, 320.0, 300.0)
@@ -44,16 +44,9 @@ def user_input_features():
     torque = st.sidebar.slider("Torque (Nm)", 3.0, 80.0, 40.0)
     tool_wear = st.sidebar.slider("Tool Wear (min)", 0, 250, 100)
 
-    # Convert 'Type' to One-Hot Encoding (Binary Features)
-    type_L = 1 if machine_type == "L" else 0
-    type_M = 1 if machine_type == "M" else 0
-    type_H = 1 if machine_type == "H" else 0
-
-    # Ensure default values for all expected features
+    # **FIX: Use 'Type' as a single categorical feature instead of one-hot encoding**
     data = {
-        "Type_L": [type_L],
-        "Type_M": [type_M],
-        "Type_H": [type_H],
+        "Type": [machine_type],  # Keep as categorical
         "Air temperature [K]": [air_temp],
         "Process temperature [K]": [process_temp],
         "Rotational speed [rpm]": [rotational_speed],
@@ -68,7 +61,7 @@ def user_input_features():
 
     df = pd.DataFrame(data)
 
-    # 🔥 Fix KeyError by ensuring the order of features matches the model
+    # 🔥 Ensure correct feature order
     missing_features = [feature for feature in input_features if feature not in df.columns]
     if missing_features:
         st.error(f"🚨 Missing features in input: {missing_features}")
@@ -100,4 +93,3 @@ if st.button("🔍 Predict Machine Failure"):
         st.progress(failure_prob / 100)
     except Exception as e:
         st.error(f"🚨 Prediction error: {e}")
-
