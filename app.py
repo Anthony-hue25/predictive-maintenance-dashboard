@@ -6,6 +6,11 @@ import pickle
 import os
 import streamlit as st
 
+import os
+os.system("pip install scikit-learn")
+import sklearn
+
+
 # Function to safely load the model
 def load_model():
     model_path = "trained_rf_model_compatible.pkl"
