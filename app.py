@@ -5,7 +5,7 @@ import os
 
 # Function to safely load the model
 def load_model():
-    model_path = "trained_rf_model.pkl"  # Ensure the filename matches your saved model
+    model_path = "trained_rf_model.pkl"  # Ensure this matches your saved model file
     if os.path.exists(model_path):
         try:
             with open(model_path, "rb") as file:
@@ -49,7 +49,7 @@ def user_input_features():
     type_M = 1 if machine_type == "M" else 0
     type_H = 1 if machine_type == "H" else 0
 
-    # Default values for all expected features
+    # Ensure default values for all expected features
     data = {
         "Type_L": [type_L],
         "Type_M": [type_M],
@@ -68,8 +68,12 @@ def user_input_features():
 
     df = pd.DataFrame(data)
 
-    # Ensure feature order matches model training
-    df = df[input_features]
+    # 🔥 Fix KeyError by ensuring the order of features matches the model
+    missing_features = [feature for feature in input_features if feature not in df.columns]
+    if missing_features:
+        st.error(f"🚨 Missing features in input: {missing_features}")
+    
+    df = df.reindex(columns=input_features, fill_value=0)  # Ensure order and fill missing
 
     return df
 
