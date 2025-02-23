@@ -1,0 +1,6 @@
+streamlit
+pandas
+numpy
+scikit-learn
+pickle5
+scikit-learn==1.6.1
