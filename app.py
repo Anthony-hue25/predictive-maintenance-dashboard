@@ -1,19 +1,12 @@
 import streamlit as st
 import pandas as pd
 import pickle
-
-import pickle
 import os
-import streamlit as st
-
-import os
-os.system("pip install scikit-learn")
 import sklearn
-
 
 # Function to safely load the model
 def load_model():
-    model_path = "trained_rf_model.pkl"
+    model_path = "trained_rf_model.pkl"  # Ensure the filename matches your saved model
     if os.path.exists(model_path):
         try:
             with open(model_path, "rb") as file:
@@ -22,16 +15,18 @@ def load_model():
             st.error(f"🚨 Model loading error: {e}")
             return None
     else:
-        st.error("🚨 Model file not found! Upload `trained_rf_model_compatible.pkl` to the repository.")
+        st.error("🚨 Model file not found! Upload `trained_rf_model.pkl` to the repository.")
         return None
 
 # Load the trained model
 model_rf = load_model()
 
-# Check if model loaded successfully
+# Stop execution if model fails to load
 if model_rf is None:
     st.stop()
 
+# Get the trained model's feature names
+input_features = model_rf.feature_names_in_
 
 # Streamlit App Title
 st.title("🔧 AI-Powered Predictive Maintenance Dashboard")
@@ -41,23 +36,40 @@ st.markdown("Monitor machine health & predict failures in real-time!")
 st.sidebar.header("📊 Input Sensor Data")
 
 def user_input_features():
+    # Machine Type Selection (Encoding for Model)
+    machine_type = st.sidebar.selectbox("Machine Type", ["L", "M", "H"])  # Assuming 'H' is another type
+    type_encoded = {"Type_L": 0, "Type_M": 0, "Type_H": 0}
+    type_encoded[f"Type_{machine_type}"] = 1  # Set the correct type to 1
+
     air_temp = st.sidebar.slider("Air Temperature (K)", 295.0, 320.0, 300.0)
     process_temp = st.sidebar.slider("Process Temperature (K)", 305.0, 340.0, 310.0)
     rotational_speed = st.sidebar.slider("Rotational Speed (rpm)", 1200, 3000, 1500)
     torque = st.sidebar.slider("Torque (Nm)", 3.0, 80.0, 40.0)
     tool_wear = st.sidebar.slider("Tool Wear (min)", 0, 250, 100)
-    
-    # Ensure input matches the trained model's feature names
+
+    # Create DataFrame with correct feature order
     data = {
+        "Type_L": [type_encoded["Type_L"]],
+        "Type_M": [type_encoded["Type_M"]],
+        "Type_H": [type_encoded["Type_H"]],
         "Air temperature [K]": [air_temp],
         "Process temperature [K]": [process_temp],
         "Rotational speed [rpm]": [rotational_speed],
         "Torque [Nm]": [torque],
         "Tool wear [min]": [tool_wear],
-        "Type_L": [0],  # Assume machine type is 'M' unless specified
-        "Type_M": [0]
+        "TWF": [0],  # Defaulting to 0, change if needed
+        "HDF": [0],
+        "PWF": [0],
+        "OSF": [0],
+        "RNF": [0]
     }
-    return pd.DataFrame(data)
+    
+    df = pd.DataFrame(data)
+    
+    # Ensure the columns match the trained model's feature set
+    df = df[input_features]
+    
+    return df
 
 # Get user input
 df_input = user_input_features()
