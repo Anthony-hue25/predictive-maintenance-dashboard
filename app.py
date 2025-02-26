@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import pickle
 
-# Load the trained Random Forest model pipeline
+# Load the trained model pipeline
 model_path = "mimo_rf_model.pkl"
 with open(model_path, "rb") as file:
     rf_pipeline = pickle.load(file)
@@ -27,7 +27,7 @@ tool_wear = st.sidebar.slider("Tool Wear (min)", 0, 250, 100, step=1)
 # Machine Type (Categorical)
 machine_type = st.sidebar.selectbox("Machine Type", ["L", "M", "H"])
 
-# Combine Inputs into DataFrame
+# Create DataFrame with proper columns
 input_data = pd.DataFrame([[air_temp, process_temp, rotational_speed, torque, tool_wear, machine_type]],
                           columns=["Air temperature [K]", "Process temperature [K]", "Rotational speed [rpm]",
                                    "Torque [Nm]", "Tool wear [min]", "Type"])
@@ -38,13 +38,14 @@ st.dataframe(input_data)
 
 # --- Prediction Button ---
 if st.button("🔍 Predict Machine Failure"):
-    # Process input through trained model pipeline
-    prediction = rf_pipeline.predict(input_data)
-    failure_probs = rf_pipeline.predict_proba(input_data)
-    
+    # Ensure input is processed through the full pipeline
+    processed_input = rf_pipeline.named_steps["preprocessor"].transform(input_data)
+    predictions = rf_pipeline.named_steps["classifier"].predict(processed_input)  
+    failure_probs = rf_pipeline.named_steps["classifier"].predict_proba(processed_input)
+
     # Extract failure probability for "Machine failure"
-    failure_prob = failure_probs[0][:, 1][0] * 100  # First output (Machine failure) probability
-    
+    failure_prob = failure_probs[0][:, 1][0] * 100  
+
     # Determine Risk Level
     if failure_prob > 50:
         st.error(f"⚠️ **High Risk: Machine Failure Likely!** (Failure Probability: {failure_prob:.2f}%)")
@@ -57,7 +58,7 @@ if st.button("🔍 Predict Machine Failure"):
     failure_labels = ["TWF", "HDF", "PWF", "OSF", "RNF"]
     st.subheader("📊 Failure Mode Prediction")
     for i, mode in enumerate(failure_labels):
-        if prediction[0][i] == 1:
+        if predictions[0][i] == 1:
             st.error(f"❌ **{mode} Failure Detected!**")
         else:
             st.success(f"✅ **No {mode} Failure.**")
