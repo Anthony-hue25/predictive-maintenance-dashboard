@@ -1,95 +1,63 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import os
 
-# Function to safely load the model
-def load_model():
-    model_path = "trained_rf_model.pkl"  # Ensure this matches your saved model file
-    if os.path.exists(model_path):
-        try:
-            with open(model_path, "rb") as file:
-                return pickle.load(file)
-        except Exception as e:
-            st.error(f"🚨 Model loading error: {e}")
-            return None
-    else:
-        st.error("🚨 Model file not found! Upload `trained_rf_model.pkl` to the repository.")
-        return None
+# Load the trained Random Forest model pipeline
+model_path = "mimo_rf_model.pkl"
+with open(model_path, "rb") as file:
+    rf_pipeline = pickle.load(file)
 
-# Load the trained model
-model_rf = load_model()
+# Streamlit UI
+st.set_page_config(page_title="AI-Powered Predictive Maintenance", layout="wide")
 
-# Stop execution if model fails to load
-if model_rf is None:
-    st.stop()
+st.markdown("""
+# 🔧 AI-Powered Predictive Maintenance Dashboard
+Monitor machine health & predict failures in real-time!
+""")
 
-# Extract expected feature names from the model
-input_features = list(model_rf.feature_names_in_)
-
-# Streamlit App Title
-st.title("🔧 AI-Powered Predictive Maintenance Dashboard")
-st.markdown("Monitor machine health & predict failures in real-time!")
-
-# Sidebar Inputs for Sensor Readings
+# Sidebar Inputs
 st.sidebar.header("📊 Input Sensor Data")
 
-def user_input_features():
-    # Machine Type as a categorical variable (No One-Hot Encoding)
-    machine_type = st.sidebar.selectbox("Machine Type", ["L", "M", "H"])
+air_temp = st.sidebar.slider("Air Temperature (K)", 295.0, 320.0, 307.85, step=0.1)
+process_temp = st.sidebar.slider("Process Temperature (K)", 305.0, 340.0, 310.0, step=0.1)
+rotational_speed = st.sidebar.slider("Rotational Speed (rpm)", 1200, 3000, 2381, step=1)
+torque = st.sidebar.slider("Torque (Nm)", 3.0, 80.0, 40.0, step=0.1)
+tool_wear = st.sidebar.slider("Tool Wear (min)", 0, 250, 100, step=1)
 
-    air_temp = st.sidebar.slider("Air Temperature (K)", 295.0, 320.0, 300.0)
-    process_temp = st.sidebar.slider("Process Temperature (K)", 305.0, 340.0, 310.0)
-    rotational_speed = st.sidebar.slider("Rotational Speed (rpm)", 1200, 3000, 1500)
-    torque = st.sidebar.slider("Torque (Nm)", 3.0, 80.0, 40.0)
-    tool_wear = st.sidebar.slider("Tool Wear (min)", 0, 250, 100)
+# Machine Type (Categorical)
+machine_type = st.sidebar.selectbox("Machine Type", ["L", "M", "H"])
 
-    # **FIX: Use 'Type' as a single categorical feature instead of one-hot encoding**
-    data = {
-        "Type": [machine_type],  # Keep as categorical
-        "Air temperature [K]": [air_temp],
-        "Process temperature [K]": [process_temp],
-        "Rotational speed [rpm]": [rotational_speed],
-        "Torque [Nm]": [torque],
-        "Tool wear [min]": [tool_wear],
-        "TWF": [0],  # Default values for failure indicators
-        "HDF": [0],
-        "PWF": [0],
-        "OSF": [0],
-        "RNF": [0]
-    }
+# Combine Inputs into DataFrame
+input_data = pd.DataFrame([[air_temp, process_temp, rotational_speed, torque, tool_wear, machine_type]],
+                          columns=["Air temperature [K]", "Process temperature [K]", "Rotational speed [rpm]",
+                                   "Torque [Nm]", "Tool wear [min]", "Type"])
 
-    df = pd.DataFrame(data)
-
-    # 🔥 Ensure correct feature order
-    missing_features = [feature for feature in input_features if feature not in df.columns]
-    if missing_features:
-        st.error(f"🚨 Missing features in input: {missing_features}")
-    
-    df = df.reindex(columns=input_features, fill_value=0)  # Ensure order and fill missing
-
-    return df
-
-# Get user input
-df_input = user_input_features()
-
-# Display input data
+# Display Input Data
 st.subheader("📌 Input Machine Data")
-st.write(df_input)
+st.dataframe(input_data)
 
-# Predict Failure Probability
+# --- Prediction Button ---
 if st.button("🔍 Predict Machine Failure"):
-    try:
-        prediction = model_rf.predict(df_input)[0]
-        failure_prob = model_rf.predict_proba(df_input)[0][1] * 100
-
-        if prediction == 1:
-            st.error(f"⚠️ High Risk: Machine Failure Likely! (Failure Probability: {failure_prob:.2f}%)")
+    # Process input through trained model pipeline
+    prediction = rf_pipeline.predict(input_data)
+    failure_probs = rf_pipeline.predict_proba(input_data)
+    
+    # Extract failure probability for "Machine failure"
+    failure_prob = failure_probs[0][:, 1][0] * 100  # First output (Machine failure) probability
+    
+    # Determine Risk Level
+    if failure_prob > 50:
+        st.error(f"⚠️ **High Risk: Machine Failure Likely!** (Failure Probability: {failure_prob:.2f}%)")
+    elif failure_prob > 20:
+        st.warning(f"⚠️ **Moderate Risk: Maintenance Required Soon!** (Failure Probability: {failure_prob:.2f}%)")
+    else:
+        st.success(f"✅ **Low Risk: Machine Operating Normally.** (Failure Probability: {failure_prob:.2f}%)")
+    
+    # Display Failure Mode Predictions
+    failure_labels = ["TWF", "HDF", "PWF", "OSF", "RNF"]
+    st.subheader("📊 Failure Mode Prediction")
+    for i, mode in enumerate(failure_labels):
+        if prediction[0][i] == 1:
+            st.error(f"❌ **{mode} Failure Detected!**")
         else:
-            st.success(f"✅ Low Risk: Machine Operating Normally. (Failure Probability: {failure_prob:.2f}%)")
-
-        # Show failure probability gauge
-        st.subheader("📊 Failure Probability")
-        st.progress(failure_prob / 100)
-    except Exception as e:
-        st.error(f"🚨 Prediction error: {e}")
+            st.success(f"✅ **No {mode} Failure.**")
